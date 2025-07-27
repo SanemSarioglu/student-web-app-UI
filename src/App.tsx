@@ -337,7 +337,7 @@ const App = () => {
 
       {/* Confirmation Modal Component */}
       {isConfirmModalOpen && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-lg">
           <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
             <p className="text-lg font-semibold text-gray-800 mb-4">{confirmMessage}</p>
             <div className="flex justify-center gap-4">
