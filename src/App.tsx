@@ -87,7 +87,7 @@ const App = () => {
     setOnConfirmCallback(null); // Clear the callback
   };
 
-  // Mock data for initial setup - REVISED for logical student progression
+  // Fetch data from backend
   useEffect(() => {
     // Fetch courses from backend using clean architecture
     const fetchCourses = async () => {
@@ -95,6 +95,26 @@ const App = () => {
       
       if (response.success && response.data) {
         setAvailableClasses(response.data);
+        console.log('Successfully fetched courses from database:', response.data);
+        
+        // Set up some registered classes from the database courses
+        const databaseCourses = response.data;
+        const registeredCourses = [
+          databaseCourses.find(c => c.courseCode === 'CS112'),
+          databaseCourses.find(c => c.courseCode === 'CS201'),
+          databaseCourses.find(c => c.courseCode === 'MATH100'),
+          databaseCourses.find(c => c.courseCode === 'PHYS100'),
+          databaseCourses.find(c => c.courseCode === 'BIO-204'),
+          databaseCourses.find(c => c.courseCode === 'CS202'),
+          databaseCourses.find(c => c.courseCode === 'CS301'),
+          databaseCourses.find(c => c.courseCode === 'SV101'),
+          databaseCourses.find(c => c.courseCode === 'MECA110'),
+          databaseCourses.find(c => c.courseCode === 'ELEC101'),
+          databaseCourses.find(c => c.courseCode === 'MATH110'),
+          databaseCourses.find(c => c.courseCode === 'PHYS105'),
+        ].filter(Boolean).map(cls => ({ ...cls, assignments: [] }));
+        
+        setRegisteredClasses(registeredCourses);
       } else {
         console.warn('Failed to fetch courses:', response.error);
         // Fallback to mock data if API fails
