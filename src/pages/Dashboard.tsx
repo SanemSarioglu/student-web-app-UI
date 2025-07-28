@@ -35,7 +35,7 @@ const Dashboard: React.FC<DashboardProps> = ({ registeredClasses, grades }) => {
 
     registeredClasses.forEach(cls => {
       const overallGrade = calculateOverallCourseGrade(grades[cls.courseCode]);
-      if (typeof overallGrade === 'number') { // Only include numerical overall grades
+      if (typeof overallGrade === 'number' && cls.year !== undefined) { // Only include numerical overall grades and ensure year exists
         const year = cls.year;
         if (!gradesByYear[year]) {
           gradesByYear[year] = { totalGrade: 0, count: 0 };
