@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // Type definitions
@@ -73,10 +73,10 @@ const App = () => {
   const [selectedClassDetails, setSelectedClassDetails] = useState<ClassData | null>(null);
 
   // New states for student information - Updated for logical progression
-  const [studentName, setStudentName] = useState<string>('Alice Smith'); // Mock student name
-  const [studentDepartment, setStudentDepartment] = useState<string>('CS'); // Mock student department
-  const [studentSemesterLevel, setStudentSemesterLevel] = useState<string>('BA3'); // Mock student semester level
-  const [currentSemester, setCurrentSemester] = useState<string>('Fall 2025'); // Mock current semester
+  const [studentName] = useState<string>('Alice Smith'); // Mock student name
+  const [studentDepartment] = useState<string>('CS'); // Mock student department
+  const [studentSemesterLevel] = useState<string>('BA3'); // Mock student semester level
+  const [currentSemester] = useState<string>('Fall 2025'); // Mock current semester
 
   // State for confirmation modal
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState<boolean>(false);
@@ -219,32 +219,6 @@ const App = () => {
     });
   };
 
-  // Function to update a specific sub-grade
-  const updateGrade = (classId: string, gradeType: string, newGrade: string | number) => {
-    let gradeValue: string | number = newGrade;
-    if (typeof newGrade === 'string' && newGrade.toUpperCase() === 'N/A') {
-        gradeValue = 'N/A';
-    } else {
-        gradeValue = parseInt(newGrade as string);
-        if (isNaN(gradeValue as number) || (gradeValue as number) < 1 || (gradeValue as number) > 6) {
-            showTransientNotification("Invalid grade. Please enter a number between 1 and 6, or 'N/A'.");
-            return;
-        }
-    }
-
-    setGrades(prev => {
-      const updatedClassGrades = {
-        ...prev[classId],
-        [gradeType]: gradeValue
-      };
-      return {
-        ...prev,
-        [classId]: updatedClassGrades
-      };
-    });
-    showTransientNotification(`Grade for ${gradeType} in ${registeredClasses.find(c => c.id === classId)?.name} updated to ${gradeValue}.`);
-  };
-
   // Function to handle viewing class details (still needed for MyClasses page)
   const handleViewClassDetails = (classObj: ClassData) => {
     setSelectedClassDetails(classObj);
@@ -324,7 +298,6 @@ const App = () => {
           <MyGrades
             registeredClasses={registeredClasses}
             grades={grades}
-            onUpdateGrade={updateGrade}
           />
         )}
         {currentView === 'classDetails' && selectedClassDetails && (
@@ -633,10 +606,9 @@ const MyClasses = ({ registeredClasses, onViewDetails, onUnregister }: {
 };
 
 // Component for viewing grades
-const MyGrades = ({ registeredClasses, grades, onUpdateGrade }: { 
+const MyGrades = ({ registeredClasses, grades }: { 
   registeredClasses: ClassData[]; 
   grades: Grades; 
-  onUpdateGrade: (classId: string, gradeType: string, newGrade: string | number) => void; 
 }) => {
   // Filter classes with numerical grades to be included in the view
   const classesWithGrades = registeredClasses.filter(cls => {
