@@ -153,7 +153,7 @@ class ApiService {
     if (response.success && response.data) {
       // Filter enrollments for the specific student
       const studentEnrollments = response.data.filter(
-        enrollment => enrollment.studentId === studentId
+        enrollment => enrollment.student?.id === studentId
       );
       
       // Transform to ClassData format
@@ -182,7 +182,7 @@ class ApiService {
       const studentGrades: {[courseCode: string]: string} = {};
       
       response.data
-        .filter(enrollment => enrollment.studentId === studentId)
+        .filter(enrollment => enrollment.student?.id === studentId)
         .forEach(enrollment => {
           if (enrollment.section?.course && enrollment.grade) {
             studentGrades[enrollment.section.course.courseCode] = enrollment.grade;
