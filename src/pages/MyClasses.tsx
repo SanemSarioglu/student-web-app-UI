@@ -13,9 +13,9 @@ const MyClasses: React.FC<MyClassesProps> = ({ registeredClasses, onViewDetails,
       <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">My Registered Classes</h2>
       {registeredClasses.length > 0 ? (
         <ul className="space-y-4">
-          {registeredClasses.map(cls => (
+          {registeredClasses.map((cls, index) => (
             <li
-              key={cls.courseCode}
+              key={`${cls.courseCode}-${cls.semester}-${cls.year}-${index}`}
               className="bg-purple-50 p-4 rounded-lg shadow-sm border border-purple-200 flex flex-col sm:flex-row items-center justify-between"
             >
               <div

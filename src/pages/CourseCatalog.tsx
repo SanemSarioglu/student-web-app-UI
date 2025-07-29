@@ -89,8 +89,8 @@ const CourseCatalog: React.FC<CourseCatalogProps> = ({ availableClasses, registe
 
       {filteredClasses.length > 0 ? (
         <ul className="space-y-4">
-          {filteredClasses.map(cls => (
-            <li key={cls?.courseCode || 'unknown'} className="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center">
+          {filteredClasses.map((cls, index) => (
+            <li key={`${cls?.courseCode || 'unknown'}-${cls?.semester || 'unknown'}-${cls?.year || 'unknown'}-${index}`} className="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center">
               <div className="mb-2 sm:mb-0">
                 <h3 className="text-lg font-semibold text-gray-800">{cls?.courseName || 'Unknown Course'} ({cls?.courseCode || 'N/A'})</h3>
                 <p className="text-gray-600 text-sm">Instructor: {cls?.instructor || 'N/A'} | Credits: {cls?.credits || 'N/A'} | Dept: {cls?.majorDepartment?.departmentCode || 'N/A'} | Level: {cls?.availableForSemester || 'N/A'}</p>

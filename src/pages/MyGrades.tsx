@@ -85,8 +85,8 @@ const MyGrades: React.FC<MyGradesProps> = ({ registeredClasses, grades }) => {
                         <tbody className="text-gray-700 text-base font-light">
                           {semesterData.classes
                             .sort((a, b) => a.courseName.localeCompare(b.courseName)) // Sort classes alphabetically
-                            .map(cls => (
-                              <tr key={cls.courseCode} className="border-b border-gray-200 hover:bg-gray-50">
+                            .map((cls, index) => (
+                              <tr key={`${cls.courseCode}-${cls.semester}-${cls.year}-${index}`} className="border-b border-gray-200 hover:bg-gray-50">
                                 <td className="py-2 px-4 whitespace-nowrap">{cls.courseName} ({cls.courseCode})</td>
                                 <td className="py-2 px-4">
                                   <span className={`py-1 px-3 rounded-full text-xs font-semibold ${getGradeColorClass(cls.overallGrade)}`}>

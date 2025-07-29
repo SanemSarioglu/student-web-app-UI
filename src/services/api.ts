@@ -10,8 +10,9 @@ import {
   Section, 
   Enrollment 
 } from '../types/entities';
-import { 
-  ClassData 
+import {
+  ClassData,
+  GradeData
 } from '../types/ui';
 
 const API_BASE_URL = 'http://localhost:8080/api';
@@ -159,8 +160,24 @@ class ApiService {
       // Transform to ClassData format
       const transformedEnrollments = studentEnrollments.map(transformEnrollmentToClassData);
       
+      // Remove duplicates by course code (keep the most recent one)
+      const uniqueEnrollments = transformedEnrollments.reduce((acc, current) => {
+        const existingIndex = acc.findIndex(item => item.courseCode === current.courseCode);
+        if (existingIndex === -1) {
+          acc.push(current);
+        } else {
+          // Keep the one with the higher year, or if same year, keep the one with 'Spring' over 'Fall'
+          const existing = acc[existingIndex];
+          if (current.year > existing.year || 
+              (current.year === existing.year && current.semester === 'Spring' && existing.semester === 'Fall')) {
+            acc[existingIndex] = current;
+          }
+        }
+        return acc;
+      }, [] as ClassData[]);
+      
       return {
-        data: transformedEnrollments,
+        data: uniqueEnrollments,
         error: null,
         success: true,
       };
@@ -174,20 +191,47 @@ class ApiService {
   }
 
   // Get grades for a specific student
-  async getStudentGrades(studentId: number): Promise<ApiResponse<{[courseCode: string]: string}>> {
+  async getStudentGrades(studentId: number): Promise<ApiResponse<{[courseCode: string]: GradeData}>> {
     const response = await this.makeRequest<Enrollment[]>('/enrollment');
     
     if (response.success && response.data) {
       // Filter enrollments for the specific student and extract grades
-      const studentGrades: {[courseCode: string]: string} = {};
+      const studentGrades: {[courseCode: string]: GradeData} = {};
       
-      response.data
+      // Sort enrollments by year and semester to get the most recent ones
+      const sortedEnrollments = response.data
         .filter(enrollment => enrollment.student?.id === studentId)
-        .forEach(enrollment => {
-          if (enrollment.section?.course && enrollment.grade) {
-            studentGrades[enrollment.section.course.courseCode] = enrollment.grade;
+        .sort((a, b) => {
+          // Sort by year first (descending)
+          if (a.section?.year !== b.section?.year) {
+            return (b.section?.year || 0) - (a.section?.year || 0);
           }
+          // If same year, Spring comes after Fall
+          if (a.section?.semester === 'Spring' && b.section?.semester === 'Fall') return -1;
+          if (a.section?.semester === 'Fall' && b.section?.semester === 'Spring') return 1;
+          return 0;
         });
+      
+      sortedEnrollments.forEach(enrollment => {
+        if (enrollment.section?.course && enrollment.grade) {
+          const courseCode = enrollment.section.course.courseCode;
+          const gradeValue = parseFloat(enrollment.grade);
+          
+          // Only add if we haven't seen this course code yet (most recent will be first)
+          if (!studentGrades[courseCode]) {
+            // Convert simple grade to detailed format expected by frontend
+            // Ensure all values are numbers, not objects
+            const gradeData = {
+              midterm: Number(gradeValue),
+              project: Number(gradeValue),
+              final: Number(gradeValue),
+              quizzes: Number(gradeValue)
+            };
+            
+            studentGrades[courseCode] = gradeData;
+          }
+        }
+      });
       
       return {
         data: studentGrades,

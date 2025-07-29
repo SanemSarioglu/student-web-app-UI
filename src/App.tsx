@@ -128,18 +128,9 @@ const App = () => {
           // Fetch grades for the selected student
           const gradesResponse = await apiService.getStudentGrades(selectedStudent.id);
           if (gradesResponse.success && gradesResponse.data) {
-            // Transform grades to the expected format
-            const transformedGrades: Grades = {};
-            Object.entries(gradesResponse.data).forEach(([courseCode, grade]) => {
-              transformedGrades[courseCode] = {
-                midterm: grade,
-                project: grade,
-                final: grade,
-                quizzes: grade
-              };
-            });
-            setGrades(transformedGrades);
-            console.log('Successfully fetched grades for student:', transformedGrades);
+            // The API service already returns GradeData objects, no transformation needed
+            setGrades(gradesResponse.data);
+            console.log('Successfully fetched grades for student:', gradesResponse.data);
           } else {
             console.warn('Failed to fetch grades:', gradesResponse.error);
           }

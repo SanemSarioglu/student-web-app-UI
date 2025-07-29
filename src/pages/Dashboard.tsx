@@ -65,8 +65,8 @@ const Dashboard: React.FC<DashboardProps> = ({ registeredClasses, grades }) => {
         <h3 className="text-xl font-semibold text-gray-800 mb-4">Ongoing Classes (Fall 2025)</h3>
         {ongoingClasses.length > 0 ? (
           <ul className="space-y-3">
-            {ongoingClasses.map(cls => (
-              <li key={cls.courseCode} className="flex justify-between items-center text-gray-700">
+            {ongoingClasses.map((cls, index) => (
+              <li key={`${cls.courseCode}-${cls.semester}-${cls.year}-${index}`} className="flex justify-between items-center text-gray-700">
                 <span>{cls.courseName}</span>
                 <span className="text-sm text-gray-500">Grades Pending</span>
               </li>

@@ -4,13 +4,16 @@ import { GradeData } from '../types/ui';
 export const calculateOverallCourseGrade = (gradesObject: GradeData | undefined): number | string => {
   if (!gradesObject) return 'N/A';
   const { midterm, project, final, quizzes } = gradesObject;
+  
   // Filter valid numerical grades
   const validGrades = [midterm, project, final, quizzes].filter(g => typeof g === 'number');
 
   if (validGrades.length === 0) return 'N/A';
   const sum = validGrades.reduce((acc, curr) => acc + (curr as number), 0);
+  const average = parseFloat((sum / validGrades.length).toFixed(2));
+  
   // Return a number for calculations
-  return parseFloat((sum / validGrades.length).toFixed(2));
+  return average;
 };
 
 // Helper function for grade color class
