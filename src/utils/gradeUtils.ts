@@ -1,4 +1,4 @@
-import { GradeData } from '../types/classData';
+import { GradeData } from '../types/ui';
 
 // Helper to calculate overall grade from sub-grades (midterm, project, final, quizzes)
 export const calculateOverallCourseGrade = (gradesObject: GradeData | undefined): number | string => {

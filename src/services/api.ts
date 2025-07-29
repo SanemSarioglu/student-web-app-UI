@@ -1,14 +1,18 @@
 // API Service Layer - Clean Architecture
 import { 
-  ApiResponse, 
+  ApiResponse 
+} from '../types/api';
+import { 
   Student, 
   Course, 
   Department, 
   Instructor, 
   Section, 
-  Enrollment, 
+  Enrollment 
+} from '../types/entities';
+import { 
   ClassData 
-} from '../types/classData';
+} from '../types/ui';
 
 const API_BASE_URL = 'http://localhost:8080/api';
 
@@ -20,7 +24,7 @@ const transformCourseToClassData = (dbCourse: Course): ClassData => {
     instructor: dbCourse.instructor,
     credits: dbCourse.credits,
     majorDepartment: dbCourse.majorDepartment || {
-      departmentCode: dbCourse.majorCode,
+      departmentCode: dbCourse.majorCode || '',
       departmentName: '',
       headOfDepartment: ''
     },
@@ -47,7 +51,7 @@ const transformEnrollmentToClassData = (enrollment: Enrollment): ClassData => {
     instructor: course.instructor,
     credits: course.credits,
     majorDepartment: course.majorDepartment || {
-      departmentCode: course.majorCode,
+      departmentCode: course.majorCode || '',
       departmentName: '',
       headOfDepartment: ''
     },
@@ -110,7 +114,11 @@ class ApiService {
       };
     }
     
-    return response;
+    return {
+      data: null,
+      error: response.error,
+      success: false,
+    };
   }
 
   // Get all students
@@ -158,7 +166,11 @@ class ApiService {
       };
     }
     
-    return response;
+    return {
+      data: null,
+      error: response.error,
+      success: false,
+    };
   }
 
   // Get grades for a specific student
@@ -184,7 +196,11 @@ class ApiService {
       };
     }
     
-    return response;
+    return {
+      data: null,
+      error: response.error,
+      success: false,
+    };
   }
 
   // Get a specific student by ID

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ClassData, Grades } from '../types/classData';
+import { ClassData, Grades } from '../types/ui';
 import { calculateOverallCourseGrade, getGradeColorClass } from '../utils/gradeUtils';
 
 interface MyGradesProps {

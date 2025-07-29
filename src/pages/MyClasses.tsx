@@ -1,5 +1,5 @@
 import React from 'react';
-import { ClassData } from '../types/classData';
+import { ClassData } from '../types/ui';
 
 interface MyClassesProps {
   registeredClasses: ClassData[];

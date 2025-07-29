@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ClassData } from '../types/classData';
+import { ClassData } from '../types/ui';
 import { getSemesterLevelValue } from '../utils/gradeUtils';
 
 interface CourseCatalogProps {

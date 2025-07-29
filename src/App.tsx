@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { apiService } from './services/api';
 import { 
   ClassData, 
   Grades, 
-  Student, 
-  Department, 
   ViewType 
-} from './types/classData';
-import { calculateOverallCourseGrade, getGradeColorClass, getSemesterLevelValue } from './utils/gradeUtils';
+} from './types/ui';
+import { 
+  Student 
+} from './types/entities';
 import Dashboard from './pages/Dashboard';
 import CourseCatalog from './pages/CourseCatalog';
 import MyClasses from './pages/MyClasses';
