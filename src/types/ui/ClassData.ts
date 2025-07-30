@@ -16,6 +16,8 @@ export interface ClassData {
   grade?: string; // For enrolled classes
   enrollmentStatus?: string; // For enrolled classes
   sectionId?: number; // Section ID for enrollment operations
+  currentEnrollment?: number; // Current number of students enrolled
+  capacity?: number; // Maximum capacity of the section
   assignments?: {
     midterm: string | number;
     project: string | number;

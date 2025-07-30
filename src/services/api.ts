@@ -64,7 +64,9 @@ const transformEnrollmentToClassData = (enrollment: Enrollment): ClassData => {
     active: course.isActive,
     grade: enrollment.grade,
     enrollmentStatus: enrollment.status,
-    sectionId: section.sectionId // Include sectionId for enrollment operations
+    sectionId: section.sectionId, // Include sectionId for enrollment operations
+    currentEnrollment: section.currentEnrollment,
+    capacity: section.capacity
   };
 };
 
@@ -178,32 +180,18 @@ class ApiService {
     const response = await this.makeRequest<Enrollment[]>('/enrollment');
     
     if (response.success && response.data) {
-      // Filter enrollments for the specific student
+      // Filter enrollments for the specific student AND only 2025 Fall semester
       const studentEnrollments = response.data.filter(
-        enrollment => enrollment.student?.id === studentId
+        enrollment => enrollment.student?.id === studentId &&
+                     enrollment.section?.year === 2025 &&
+                     enrollment.section?.semester === 'Fall'
       );
       
       // Transform to ClassData format
       const transformedEnrollments = studentEnrollments.map(transformEnrollmentToClassData);
       
-      // Remove duplicates by course code (keep the most recent one)
-      const uniqueEnrollments = transformedEnrollments.reduce((acc, current) => {
-        const existingIndex = acc.findIndex(item => item.courseCode === current.courseCode);
-        if (existingIndex === -1) {
-          acc.push(current);
-        } else {
-          // Keep the one with the higher year, or if same year, keep the one with 'Spring' over 'Fall'
-          const existing = acc[existingIndex];
-          if (current.year > existing.year || 
-              (current.year === existing.year && current.semester === 'Spring' && existing.semester === 'Fall')) {
-            acc[existingIndex] = current;
-          }
-        }
-        return acc;
-      }, [] as ClassData[]);
-      
       return {
-        data: uniqueEnrollments,
+        data: transformedEnrollments,
         error: null,
         success: true,
       };
@@ -341,7 +329,9 @@ class ApiService {
               semester: section.semester,
               prerequisites: course.prerequisites,
               active: course.isActive,
-              sectionId: section.sectionId // Include the actual sectionId
+              sectionId: section.sectionId, // Include the actual sectionId
+              currentEnrollment: section.currentEnrollment,
+              capacity: section.capacity
             });
           });
         } else {

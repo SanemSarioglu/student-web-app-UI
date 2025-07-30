@@ -11,6 +11,14 @@ const MyClasses: React.FC<MyClassesProps> = ({ registeredClasses, onViewDetails,
   return (
     <div>
       <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">My Registered Classes</h2>
+      
+      {/* Note about current semester */}
+      <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-md">
+        <p className="text-purple-800 text-sm">
+          <strong>Note:</strong> Only your current 2025 Fall semester classes are shown here. Completed classes from previous semesters are not displayed.
+        </p>
+      </div>
+      
       {registeredClasses.length > 0 ? (
         <ul className="space-y-4">
           {registeredClasses.map((cls, index) => (

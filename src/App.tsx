@@ -353,7 +353,7 @@ const App = () => {
       <main className="w-full max-w-4xl bg-white shadow-md rounded-lg p-6">
         {currentView === 'dashboard' && (
           <Dashboard
-            registeredClasses={registeredClasses}
+            registeredClasses={allStudentEnrollments}
             grades={grades}
           />
         )}
