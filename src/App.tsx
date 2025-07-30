@@ -24,6 +24,9 @@ const App = () => {
   // State to store classes the student is registered for
   const [registeredClasses, setRegisteredClasses] = useState<ClassData[]>([]);
   
+  // State to store all enrollments for grades page (no deduplication)
+  const [allStudentEnrollments, setAllStudentEnrollments] = useState<ClassData[]>([]);
+  
   // State to store grades for registered classes
   const [grades, setGrades] = useState<Grades>({});
   
@@ -116,13 +119,22 @@ const App = () => {
     const fetchStudentData = async () => {
       if (selectedStudent) {
         try {
-          // Fetch enrollments for the selected student
+          // Fetch enrollments for the selected student (for My Classes page)
           const enrollmentsResponse = await apiService.getStudentEnrollments(selectedStudent.id);
           if (enrollmentsResponse.success && enrollmentsResponse.data) {
             setRegisteredClasses(enrollmentsResponse.data);
             console.log('Successfully fetched enrollments for student:', enrollmentsResponse.data);
           } else {
             console.warn('Failed to fetch enrollments:', enrollmentsResponse.error);
+          }
+
+          // Fetch all enrollments for the selected student (for My Grades page - no deduplication)
+          const allEnrollmentsResponse = await apiService.getAllStudentEnrollments(selectedStudent.id);
+          if (allEnrollmentsResponse.success && allEnrollmentsResponse.data) {
+            setAllStudentEnrollments(allEnrollmentsResponse.data);
+            console.log('Successfully fetched all enrollments for student:', allEnrollmentsResponse.data);
+          } else {
+            console.warn('Failed to fetch all enrollments:', allEnrollmentsResponse.error);
           }
 
           // Fetch grades for the selected student
@@ -361,7 +373,7 @@ const App = () => {
         )}
         {currentView === 'myGrades' && (
           <MyGrades
-            registeredClasses={registeredClasses}
+            registeredClasses={allStudentEnrollments}
             grades={grades}
           />
         )}

@@ -216,6 +216,33 @@ class ApiService {
     };
   }
 
+  // Get all enrollments for a specific student (for grades page - no deduplication)
+  async getAllStudentEnrollments(studentId: number): Promise<ApiResponse<ClassData[]>> {
+    const response = await this.makeRequest<Enrollment[]>('/enrollment');
+    
+    if (response.success && response.data) {
+      // Filter enrollments for the specific student
+      const studentEnrollments = response.data.filter(
+        enrollment => enrollment.student?.id === studentId
+      );
+      
+      // Transform to ClassData format (no deduplication)
+      const transformedEnrollments = studentEnrollments.map(transformEnrollmentToClassData);
+      
+      return {
+        data: transformedEnrollments,
+        error: null,
+        success: true,
+      };
+    }
+    
+    return {
+      data: null,
+      error: response.error,
+      success: false,
+    };
+  }
+
   // Get grades for a specific student
   async getStudentGrades(studentId: number): Promise<ApiResponse<{[courseCode: string]: GradeData}>> {
     const response = await this.makeRequest<Enrollment[]>('/enrollment');

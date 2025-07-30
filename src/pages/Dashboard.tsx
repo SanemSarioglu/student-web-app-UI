@@ -9,18 +9,44 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ registeredClasses, grades }) => {
-  // Get ongoing classes (those with no numerical grades yet)
+  // Determine current semester based on most recent enrollment
+  const getCurrentSemester = () => {
+    if (registeredClasses.length === 0) return { year: 2025, semester: 'Spring' };
+    
+    // Sort by year and semester (Spring comes after Fall)
+    const sortedClasses = [...registeredClasses].sort((a, b) => {
+      if (a.year !== b.year) return b.year - a.year;
+      return b.semester === 'Spring' ? 1 : -1;
+    });
+    
+    const mostRecent = sortedClasses[0];
+    return { year: mostRecent.year, semester: mostRecent.semester };
+  };
+
+  const currentSemester = getCurrentSemester();
+
+  // Get ongoing classes (those with no numerical grades yet) for current semester
   const ongoingClasses = registeredClasses.filter(cls => {
     const classGrades = grades[cls.courseCode];
-    return !classGrades || Object.values(classGrades).every(grade => typeof grade !== 'number' || (typeof grade === 'string' && grade === 'N/A'));
+    const isCurrentSemester = cls.year === currentSemester.year && cls.semester === currentSemester.semester;
+    const hasNoGrades = !classGrades || Object.values(classGrades).every(grade => typeof grade !== 'number' || (typeof grade === 'string' && grade === 'N/A'));
+    return isCurrentSemester && hasNoGrades;
   });
 
-  // Get grades for the previous semester (Spring 2025)
-  const previousSemesterYear = 2025;
-  const previousSemesterName = 'Spring';
+  // Get grades for the previous semester
+  const getPreviousSemester = () => {
+    const { year, semester } = currentSemester;
+    if (semester === 'Spring') {
+      return { year, semester: 'Fall' };
+    } else {
+      return { year: year - 1, semester: 'Spring' };
+    }
+  };
+
+  const previousSemester = getPreviousSemester();
 
   const previousSemesterGrades = registeredClasses
-    .filter(cls => cls.year === previousSemesterYear && cls.semester === previousSemesterName)
+    .filter(cls => cls.year === previousSemester.year && cls.semester === previousSemester.semester)
     .map(cls => ({
         id: cls.courseCode,
         name: cls.courseName,
@@ -62,7 +88,7 @@ const Dashboard: React.FC<DashboardProps> = ({ registeredClasses, grades }) => {
 
       {/* Ongoing Classes */}
       <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-        <h3 className="text-xl font-semibold text-gray-800 mb-4">Ongoing Classes (Fall 2025)</h3>
+        <h3 className="text-xl font-semibold text-gray-800 mb-4">Ongoing Classes ({currentSemester.semester} {currentSemester.year})</h3>
         {ongoingClasses.length > 0 ? (
           <ul className="space-y-3">
             {ongoingClasses.map((cls, index) => (
@@ -81,7 +107,7 @@ const Dashboard: React.FC<DashboardProps> = ({ registeredClasses, grades }) => {
 
       {/* Previous Semester Grades */}
       <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-        <h3 className="text-xl font-semibold text-gray-800 mb-4">Grades from Previous Semester (Spring 2025)</h3>
+        <h3 className="text-xl font-semibold text-gray-800 mb-4">Grades from Previous Semester ({previousSemester.semester} {previousSemester.year})</h3>
         {previousSemesterGrades.length > 0 ? (
           <ul className="space-y-3">
             {previousSemesterGrades.map(grade => (
