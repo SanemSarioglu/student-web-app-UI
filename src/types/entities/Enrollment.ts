@@ -3,7 +3,7 @@ import { Section } from './Section';
 
 // Enrollment entity type
 export interface Enrollment {
-  enrollementId: number;
+  enrollmentId: number;
   studentId: number;
   sectionId: number;
   grade: string;

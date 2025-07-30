@@ -15,6 +15,7 @@ export interface ClassData {
   description?: string; // Optional, as it's not in DB schema but was in mock data
   grade?: string; // For enrolled classes
   enrollmentStatus?: string; // For enrolled classes
+  sectionId?: number; // Section ID for enrollment operations
   assignments?: {
     midterm: string | number;
     project: string | number;

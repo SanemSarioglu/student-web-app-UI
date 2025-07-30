@@ -95,11 +95,11 @@ const App = () => {
           console.warn('Failed to fetch students:', studentsResponse.error);
         }
 
-        // Fetch courses
-        const coursesResponse = await apiService.getCourses();
+        // Fetch courses with their actual section information
+        const coursesResponse = await apiService.getCoursesWithSections();
         if (coursesResponse.success && coursesResponse.data) {
           setAvailableClasses(coursesResponse.data);
-          console.log('Successfully fetched courses from database:', coursesResponse.data);
+          console.log('Successfully fetched courses with sections from database:', coursesResponse.data);
         } else {
           console.warn('Failed to fetch courses:', coursesResponse.error);
         }
@@ -150,28 +150,88 @@ const App = () => {
   };
 
   // Handle class registration
-  const handleRegister = (classToRegister: ClassData) => {
+  const handleRegister = async (classToRegister: ClassData) => {
+    if (!selectedStudent) {
+      showTransientNotification('Please select a student first');
+      return;
+    }
+
+    if (!classToRegister.sectionId) {
+      showTransientNotification('Course section information not available');
+      return;
+    }
+
     showConfirmation(
       `Are you sure you want to register for ${classToRegister.courseName}?`,
-      () => {
-        setRegisteredClasses(prev => [...prev, classToRegister]);
-        showTransientNotification(`Successfully registered for ${classToRegister.courseName}`);
+      async () => {
+        try {
+          // Create enrollment in database using the sectionId from the course data
+          const enrollmentResponse = await apiService.createEnrollment(selectedStudent.id, classToRegister.sectionId!);
+          
+          if (enrollmentResponse.success) {
+            // Update local state
+            setRegisteredClasses(prev => [...prev, classToRegister]);
+            showTransientNotification(`Successfully registered for ${classToRegister.courseName}`);
+          } else {
+            showTransientNotification(`Failed to register: ${enrollmentResponse.error}`);
+          }
+        } catch (error) {
+          console.error('Registration error:', error);
+          showTransientNotification('Failed to register for course');
+        }
       }
     );
   };
 
   // Handle class unregistration
-  const handleUnregister = (classId: string) => {
+  const handleUnregister = async (classId: string) => {
     const classToUnregister = registeredClasses.find(c => c.courseCode === classId);
-    if (classToUnregister) {
-      showConfirmation(
-        `Are you sure you want to unregister from ${classToUnregister.courseName}?`,
-        () => {
-          setRegisteredClasses(prev => prev.filter(c => c.courseCode !== classId));
-          showTransientNotification(`Successfully unregistered from ${classToUnregister.courseName}`);
-        }
-      );
+    if (!classToUnregister || !selectedStudent) {
+      showTransientNotification('No class found to unregister');
+      return;
     }
+
+    if (!classToUnregister.sectionId) {
+      showTransientNotification('Course section information not available');
+      return;
+    }
+
+    showConfirmation(
+      `Are you sure you want to unregister from ${classToUnregister.courseName}?`,
+      async () => {
+        try {
+          console.log('Looking for enrollment:', { studentId: selectedStudent.id, sectionId: classToUnregister.sectionId });
+          
+          // Find the enrollment to delete
+          const enrollmentResponse = await apiService.getEnrollmentByStudentAndSection(
+            selectedStudent.id, 
+            classToUnregister.sectionId!
+          );
+
+          if (enrollmentResponse.success && enrollmentResponse.data) {
+            console.log('Found enrollment:', enrollmentResponse.data);
+            
+            // Delete enrollment from database
+            const deleteResponse = await apiService.deleteEnrollment(enrollmentResponse.data.enrollmentId);
+            
+            if (deleteResponse.success) {
+              // Update local state
+              setRegisteredClasses(prev => prev.filter(c => c.courseCode !== classId));
+              showTransientNotification(`Successfully unregistered from ${classToUnregister.courseName}`);
+            } else {
+              console.error('Delete response error:', deleteResponse.error);
+              showTransientNotification(`Failed to unregister: ${deleteResponse.error}`);
+            }
+          } else {
+            console.error('Enrollment not found:', enrollmentResponse.error);
+            showTransientNotification('Enrollment not found');
+          }
+        } catch (error) {
+          console.error('Unregistration error:', error);
+          showTransientNotification('Failed to unregister from course');
+        }
+      }
+    );
   };
 
   // Handle viewing class details

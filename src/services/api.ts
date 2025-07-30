@@ -33,7 +33,8 @@ const transformCourseToClassData = (dbCourse: Course): ClassData => {
     year: 2025, // Default year
     semester: 'Fall', // Default semester
     prerequisites: dbCourse.prerequisites,
-    active: dbCourse.isActive
+    active: dbCourse.isActive,
+    sectionId: undefined // Courses don't have sectionId, only enrollments do
   };
 };
 
@@ -62,7 +63,8 @@ const transformEnrollmentToClassData = (enrollment: Enrollment): ClassData => {
     prerequisites: course.prerequisites,
     active: course.isActive,
     grade: enrollment.grade,
-    enrollmentStatus: enrollment.status
+    enrollmentStatus: enrollment.status,
+    sectionId: section.sectionId // Include sectionId for enrollment operations
   };
 };
 
@@ -86,7 +88,31 @@ class ApiService {
         };
       }
 
-      const data = await response.json();
+      // Handle empty responses (like DELETE endpoints that return 204 No Content)
+      if (response.status === 204 || response.headers.get('content-length') === '0') {
+        return {
+          data: null as T,
+          error: null,
+          success: true,
+        };
+      }
+
+      // Try to parse JSON, but handle cases where response might be empty
+      let data: T;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        // If JSON parsing fails, it might be an empty response
+        if (response.status === 200) {
+          return {
+            data: null as T,
+            error: null,
+            success: true,
+          };
+        }
+        throw jsonError;
+      }
+
       return {
         data,
         error: null,
@@ -252,9 +278,129 @@ class ApiService {
     return this.makeRequest<Student>(`/students/${studentId}`);
   }
 
+  // Get courses with their actual section information
+  async getCoursesWithSections(): Promise<ApiResponse<ClassData[]>> {
+    const [coursesResponse, sectionsResponse] = await Promise.all([
+      this.makeRequest<Course[]>('/courses'),
+      this.makeRequest<Section[]>('/sections')
+    ]);
+    
+    if (coursesResponse.success && coursesResponse.data && 
+        sectionsResponse.success && sectionsResponse.data) {
+      
+      const transformedCourses: ClassData[] = [];
+      
+      coursesResponse.data.forEach(course => {
+        // Find all sections for this course
+        const courseSections = sectionsResponse.data.filter(section => 
+          section.course?.courseCode === course.courseCode
+        );
+        
+        if (courseSections.length > 0) {
+          // Create a ClassData entry for each section
+          courseSections.forEach(section => {
+            transformedCourses.push({
+              courseCode: course.courseCode,
+              courseName: course.courseName,
+              instructor: section.instructor ? `${section.instructor.firstName} ${section.instructor.lastName}` : 'TBD',
+              credits: course.credits,
+              majorDepartment: course.majorDepartment || {
+                departmentCode: course.majorCode || '',
+                departmentName: '',
+                headOfDepartment: ''
+              },
+              availableForSemester: course.availableForSemester,
+              year: section.year,
+              semester: section.semester,
+              prerequisites: course.prerequisites,
+              active: course.isActive,
+              sectionId: section.sectionId // Include the actual sectionId
+            });
+          });
+        } else {
+          // Fallback for courses without sections (shouldn't happen in practice)
+          transformedCourses.push({
+            courseCode: course.courseCode,
+            courseName: course.courseName,
+            instructor: 'TBD',
+            credits: course.credits,
+            majorDepartment: course.majorDepartment || {
+              departmentCode: course.majorCode || '',
+              departmentName: '',
+              headOfDepartment: ''
+            },
+            availableForSemester: course.availableForSemester,
+            year: 2024, // Default fallback
+            semester: 'Fall', // Default fallback
+            prerequisites: course.prerequisites,
+            active: course.isActive,
+            sectionId: undefined
+          });
+        }
+      });
+      
+      return {
+        data: transformedCourses,
+        error: null,
+        success: true,
+      };
+    }
+    
+    return {
+      data: null,
+      error: coursesResponse.error || sectionsResponse.error,
+      success: false,
+    };
+  }
+
   // Get a specific course by code
   async getCourse(courseCode: string): Promise<ApiResponse<Course>> {
     return this.makeRequest<Course>(`/courses/${courseCode}`);
+  }
+
+  // Create a new enrollment
+  async createEnrollment(studentId: number, sectionId: number): Promise<ApiResponse<Enrollment>> {
+    const enrollmentData = {
+      student: { id: studentId },
+      section: { sectionId: sectionId },
+      status: 'current',
+      enrollmentDate: new Date().toISOString()
+    };
+
+    return this.makeRequest<Enrollment>('/enrollment', {
+      method: 'POST',
+      body: JSON.stringify(enrollmentData)
+    });
+  }
+
+  // Delete an enrollment
+  async deleteEnrollment(enrollmentId: number): Promise<ApiResponse<void>> {
+    return this.makeRequest<void>(`/enrollment/${enrollmentId}`, {
+      method: 'DELETE'
+    });
+  }
+
+  // Get enrollment by student and section
+  async getEnrollmentByStudentAndSection(studentId: number, sectionId: number): Promise<ApiResponse<Enrollment | null>> {
+    const response = await this.makeRequest<Enrollment[]>('/enrollment');
+    
+    if (response.success && response.data) {
+      const enrollment = response.data.find(
+        e => e.student?.id === studentId && e.section?.sectionId === sectionId
+      );
+      
+      return {
+        data: enrollment || null,
+        error: null,
+        success: true,
+      };
+    }
+    
+    return {
+      data: null,
+      error: response.error,
+      success: false,
+    };
   }
 }
 
