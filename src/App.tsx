@@ -7,7 +7,7 @@ import Dashboard from './pages/Dashboard';
 import MyClasses from './pages/MyClasses';
 import MyGrades from './pages/MyGrades';
 import CourseCatalog from './pages/CourseCatalog';
-import ClassDefinition from './pages/ClassDefinition';
+
 
 
 
@@ -21,7 +21,7 @@ const AppContent = () => {
     if (path === '/my-classes') return 'myClasses';
     if (path === '/my-grades') return 'myGrades';
     if (path === '/course-catalog') return 'classesList';
-    if (path === '/class-definition') return 'classDefinition';
+    
     return 'dashboard';
   };
 
@@ -171,8 +171,6 @@ const AppContent = () => {
       setCurrentView('myGrades');
     } else if (path === '/course-catalog') {
       setCurrentView('classesList');
-    } else if (path === '/class-definition') {
-      setCurrentView('classDefinition');
     }
   }, []);
 
@@ -239,9 +237,7 @@ const AppContent = () => {
       case 'classesList':
         newPath = '/course-catalog';
         break;
-      case 'classDefinition':
-        newPath = '/class-definition';
-        break;
+
       default:
         newPath = '/';
     }
@@ -432,13 +428,7 @@ const AppContent = () => {
           >
             My Grades
           </button>
-          <button
-            onClick={() => handleNavigation('classDefinition')}
-            className={`px-6 py-3 rounded-lg shadow-md transition-all duration-300
-              ${currentView === 'classDefinition' ? 'bg-blue-600 text-white transform scale-105' : 'bg-gray-200 text-gray-700 hover:bg-blue-100 hover:text-blue-700'}`}
-          >
-            Define New Class
-          </button>
+
         </nav>
       </header>
 
@@ -483,14 +473,7 @@ const AppContent = () => {
                 onRegister={handleRegister}
               />
             )}
-            {currentView === 'classDefinition' && (
-              <ClassDefinition
-                onClassCreated={() => {
-                  showTransientNotification('Class created successfully! Refreshing available classes...');
-                  fetchInitialData();
-                }}
-              />
-            )}
+
           </>
         )}
       </main>
