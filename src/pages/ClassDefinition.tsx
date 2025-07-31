@@ -13,10 +13,6 @@ interface NewClassData {
   availableForSemester: string;
   prerequisites: string;
   isActive: boolean;
-  instructorId: number;
-  year: number;
-  semester: string;
-  capacity: number;
 }
 
 const ClassDefinition: React.FC<ClassDefinitionProps> = ({ onClassCreated }) => {
@@ -29,13 +25,9 @@ const ClassDefinition: React.FC<ClassDefinitionProps> = ({ onClassCreated }) => 
     courseName: '',
     credits: 3.0,
     majorCode: '',
-    availableForSemester: 'BA3',
+    availableForSemester: 'BA1',
     prerequisites: '',
-    isActive: true,
-    instructorId: 0,
-    year: 2025,
-    semester: 'Fall',
-    capacity: 30
+    isActive: true
   });
 
   useEffect(() => {
@@ -46,12 +38,12 @@ const ClassDefinition: React.FC<ClassDefinitionProps> = ({ onClassCreated }) => 
         if (deptResponse.ok) {
           const deptData = await deptResponse.json();
           setDepartments(deptData);
+        } else {
+          throw new Error('Failed to fetch departments');
         }
-
-
       } catch (error) {
         console.error('Error fetching data:', error);
-        setMessage({ type: 'error', text: 'Failed to load departments and instructors' });
+        setMessage({ type: 'error', text: 'Failed to load departments' });
       }
     };
 
@@ -74,7 +66,7 @@ const ClassDefinition: React.FC<ClassDefinitionProps> = ({ onClassCreated }) => 
     setMessage(null);
 
     try {
-      // Create course
+      // Create course only
       const courseResponse = await fetch('http://localhost:8080/api/courses', {
         method: 'POST',
         headers: {
@@ -92,31 +84,11 @@ const ClassDefinition: React.FC<ClassDefinitionProps> = ({ onClassCreated }) => 
       });
 
       if (!courseResponse.ok) {
-        throw new Error('Failed to create course');
+        const errorData = await courseResponse.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to create course');
       }
 
-      // Create section
-      const sectionResponse = await fetch('http://localhost:8080/api/sections', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          course: { courseCode: formData.courseCode },
-          instructor: { instructorId: formData.instructorId },
-          year: formData.year,
-          semester: formData.semester,
-          capacity: formData.capacity,
-          currentEnrollment: 0,
-          status: 'Open'
-        })
-      });
-
-      if (!sectionResponse.ok) {
-        throw new Error('Failed to create section');
-      }
-
-      setMessage({ type: 'success', text: 'Class created successfully!' });
+      setMessage({ type: 'success', text: 'Course created successfully!' });
       
       // Reset form
       setFormData({
@@ -124,20 +96,16 @@ const ClassDefinition: React.FC<ClassDefinitionProps> = ({ onClassCreated }) => 
         courseName: '',
         credits: 3.0,
         majorCode: '',
-        availableForSemester: 'BA3',
+        availableForSemester: 'BA1',
         prerequisites: '',
-        isActive: true,
-        instructorId: 0,
-        year: 2025,
-        semester: 'Fall',
-        capacity: 30
+        isActive: true
       });
 
       // Notify parent component
       onClassCreated();
     } catch (error) {
-      console.error('Error creating class:', error);
-      setMessage({ type: 'error', text: 'Failed to create class. Please try again.' });
+      console.error('Error creating course:', error);
+      setMessage({ type: 'error', text: `Failed to create course: ${error instanceof Error ? error.message : 'Unknown error'}` });
     } finally {
       setIsLoading(false);
     }
@@ -293,7 +261,7 @@ const ClassDefinition: React.FC<ClassDefinitionProps> = ({ onClassCreated }) => 
               disabled={isLoading}
               className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Creating...' : 'Create Class'}
+              {isLoading ? 'Creating...' : 'Create Course'}
             </button>
           </div>
         </form>
