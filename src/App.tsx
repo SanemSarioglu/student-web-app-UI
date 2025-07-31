@@ -345,24 +345,7 @@ const AppContent = () => {
     return selectedStudent?.semester || 'Unknown Semester';
   };
 
-  // Function to fetch initial data
-  const fetchInitialData = async () => {
-    try {
-      // Fetch courses with sections
-      const coursesResponse = await apiService.getCoursesWithSections();
-      if (coursesResponse.success && coursesResponse.data) {
-        setAvailableClasses(coursesResponse.data);
-      }
 
-      // Fetch all enrollments for grades
-      const allEnrollmentsResponse = await apiService.getAllStudentEnrollments(1); // Use student ID 1 as default
-      if (allEnrollmentsResponse.success && allEnrollmentsResponse.data) {
-        setAllStudentEnrollments(allEnrollmentsResponse.data);
-      }
-    } catch (error) {
-      console.error('Error fetching initial data:', error);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center p-4 font-inter">
