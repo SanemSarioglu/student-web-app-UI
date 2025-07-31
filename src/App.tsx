@@ -138,15 +138,11 @@ const AppContent = () => {
           console.warn('Failed to fetch courses with sections:', coursesResponse.error);
         }
 
-        // Fetch all enrollments for grades
+        // Fetch all enrollments for grades - this will be updated when student changes
         const enrollmentsResponse = await apiService.getEnrollments();
         if (enrollmentsResponse.success && enrollmentsResponse.data) {
-          // Use the existing method that returns ClassData[]
-          const allEnrollmentsResponse = await apiService.getAllStudentEnrollments(1); // Use student ID 1 as default
-          if (allEnrollmentsResponse.success && allEnrollmentsResponse.data) {
-            setAllStudentEnrollments(allEnrollmentsResponse.data);
-            console.log('Successfully fetched all enrollments:', allEnrollmentsResponse.data);
-          }
+          // Initialize with empty array, will be populated when student is selected
+          setAllStudentEnrollments([]);
         } else {
           console.warn('Failed to fetch all enrollments:', enrollmentsResponse.error);
         }
@@ -186,6 +182,15 @@ const AppContent = () => {
         console.log('Successfully fetched registered classes:', registeredResponse.data);
       } else {
         console.warn('Failed to fetch registered classes:', registeredResponse.error);
+      }
+
+      // Fetch all enrollments for the selected student (for grades page)
+      const allEnrollmentsResponse = await apiService.getAllStudentEnrollments(selectedStudent.id);
+      if (allEnrollmentsResponse.success && allEnrollmentsResponse.data) {
+        setAllStudentEnrollments(allEnrollmentsResponse.data);
+        console.log('Successfully fetched all enrollments for grades:', allEnrollmentsResponse.data);
+      } else {
+        console.warn('Failed to fetch all enrollments:', allEnrollmentsResponse.error);
       }
 
       // Fetch grades for the selected student
@@ -445,7 +450,7 @@ const AppContent = () => {
             )}
             {currentView === 'myGrades' && (
               <MyGrades
-                registeredClasses={registeredClasses}
+                registeredClasses={allStudentEnrollments}
                 grades={grades}
               />
             )}

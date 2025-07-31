@@ -206,16 +206,24 @@ class ApiService {
 
   // Get all enrollments for a specific student (for grades page - no deduplication)
   async getAllStudentEnrollments(studentId: number): Promise<ApiResponse<ClassData[]>> {
+    console.log('getAllStudentEnrollments called with studentId:', studentId);
     const response = await this.makeRequest<Enrollment[]>('/enrollment');
     
     if (response.success && response.data) {
+      console.log('getAllStudentEnrollments - total enrollments from API:', response.data.length);
+      
       // Filter enrollments for the specific student
       const studentEnrollments = response.data.filter(
         enrollment => enrollment.student?.id === studentId
       );
       
+      console.log('getAllStudentEnrollments - filtered enrollments for student', studentId, ':', studentEnrollments);
+      console.log('getAllStudentEnrollments - raw student enrollments:', studentEnrollments);
+      
       // Transform to ClassData format (no deduplication)
       const transformedEnrollments = studentEnrollments.map(transformEnrollmentToClassData);
+      
+      console.log('getAllStudentEnrollments - transformed enrollments:', transformedEnrollments);
       
       return {
         data: transformedEnrollments,
@@ -239,40 +247,35 @@ class ApiService {
       // Filter enrollments for the specific student and extract grades
       const studentGrades: {[courseCode: string]: GradeData} = {};
       
-      // Sort enrollments by year and semester to get the most recent ones
-      const sortedEnrollments = response.data
-        .filter(enrollment => enrollment.student?.id === studentId)
-        .sort((a, b) => {
-          // Sort by year first (descending)
-          if (a.section?.year !== b.section?.year) {
-            return (b.section?.year || 0) - (a.section?.year || 0);
-          }
-          // If same year, Spring comes after Fall
-          if (a.section?.semester === 'Spring' && b.section?.semester === 'Fall') return -1;
-          if (a.section?.semester === 'Fall' && b.section?.semester === 'Spring') return 1;
-          return 0;
-        });
+      // Get all enrollments for the student with grades
+      const studentEnrollments = response.data
+        .filter(enrollment => enrollment.student?.id === studentId && enrollment.grade);
       
-      sortedEnrollments.forEach(enrollment => {
+      studentEnrollments.forEach(enrollment => {
         if (enrollment.section?.course && enrollment.grade) {
           const courseCode = enrollment.section.course.courseCode;
           const gradeValue = parseFloat(enrollment.grade);
+          const year = enrollment.section.year;
+          const semester = enrollment.section.semester;
           
-          // Only add if we haven't seen this course code yet (most recent will be first)
-          if (!studentGrades[courseCode]) {
-            // Convert simple grade to detailed format expected by frontend
-            // Ensure all values are numbers, not objects
-            const gradeData = {
-              midterm: Number(gradeValue),
-              project: Number(gradeValue),
-              final: Number(gradeValue),
-              quizzes: Number(gradeValue)
-            };
-            
-            studentGrades[courseCode] = gradeData;
-          }
+          // Create a unique key that includes semester information
+          const gradeKey = `${courseCode}-${year}-${semester}`;
+          
+          console.log('Creating grade key:', gradeKey, 'for student', studentId, 'with grade:', gradeValue);
+          
+          // Convert simple grade to detailed format expected by frontend
+          const gradeData = {
+            midterm: Number(gradeValue),
+            project: Number(gradeValue),
+            final: Number(gradeValue),
+            quizzes: Number(gradeValue)
+          };
+          
+          studentGrades[gradeKey] = gradeData;
         }
       });
+      
+      console.log('getStudentGrades - final studentGrades object:', studentGrades);
       
       return {
         data: studentGrades,

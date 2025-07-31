@@ -9,6 +9,9 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ registeredClasses, grades }) => {
+  console.log('Dashboard - registeredClasses:', registeredClasses);
+  console.log('Dashboard - grades:', grades);
+  
   // Determine current semester based on most recent enrollment
   const getCurrentSemester = () => {
     if (registeredClasses.length === 0) return { year: 2025, semester: 'Spring' };
@@ -20,6 +23,7 @@ const Dashboard: React.FC<DashboardProps> = ({ registeredClasses, grades }) => {
     });
     
     const mostRecent = sortedClasses[0];
+    console.log('Dashboard - most recent class:', mostRecent);
     return { year: mostRecent.year, semester: mostRecent.semester };
   };
 
@@ -27,7 +31,8 @@ const Dashboard: React.FC<DashboardProps> = ({ registeredClasses, grades }) => {
 
   // Get ongoing classes (those with no numerical grades yet) for current semester
   const ongoingClasses = registeredClasses.filter(cls => {
-    const classGrades = grades[cls.courseCode];
+    const gradeKey = `${cls.courseCode}-${cls.year}-${cls.semester}`;
+    const classGrades = grades[gradeKey];
     const isCurrentSemester = cls.year === currentSemester.year && cls.semester === currentSemester.semester;
     const hasNoGrades = !classGrades || Object.values(classGrades).every(grade => typeof grade !== 'number' || (typeof grade === 'string' && grade === 'N/A'));
     return isCurrentSemester && hasNoGrades;
@@ -47,11 +52,14 @@ const Dashboard: React.FC<DashboardProps> = ({ registeredClasses, grades }) => {
 
   const previousSemesterGrades = registeredClasses
     .filter(cls => cls.year === previousSemester.year && cls.semester === previousSemester.semester)
-    .map(cls => ({
-        id: cls.courseCode,
-        name: cls.courseName,
-        overallGrade: calculateOverallCourseGrade(grades[cls.courseCode]),
-    }))
+    .map(cls => {
+        const gradeKey = `${cls.courseCode}-${cls.year}-${cls.semester}`;
+        return {
+            id: cls.courseCode,
+            name: cls.courseName,
+            overallGrade: calculateOverallCourseGrade(grades[gradeKey]),
+        };
+    })
     .filter(g => typeof g.overallGrade === 'number') // Only show courses with numerical grades
     .sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically by name
 
@@ -60,7 +68,8 @@ const Dashboard: React.FC<DashboardProps> = ({ registeredClasses, grades }) => {
     const gradesByYear: { [key: number]: { totalGrade: number; count: number } } = {};
 
     registeredClasses.forEach(cls => {
-      const overallGrade = calculateOverallCourseGrade(grades[cls.courseCode]);
+      const gradeKey = `${cls.courseCode}-${cls.year}-${cls.semester}`;
+      const overallGrade = calculateOverallCourseGrade(grades[gradeKey]);
       if (typeof overallGrade === 'number' && cls.year !== undefined) { // Only include numerical overall grades and ensure year exists
         const year = cls.year;
         if (!gradesByYear[year]) {
