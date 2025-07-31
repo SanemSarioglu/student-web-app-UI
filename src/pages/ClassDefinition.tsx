@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Department, Instructor } from '../types/entities';
+import { Department } from '../types/entities';
 
 interface ClassDefinitionProps {
   onClassCreated: () => void;
@@ -21,7 +21,6 @@ interface NewClassData {
 
 const ClassDefinition: React.FC<ClassDefinitionProps> = ({ onClassCreated }) => {
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [instructors, setInstructors] = useState<Instructor[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -49,12 +48,7 @@ const ClassDefinition: React.FC<ClassDefinitionProps> = ({ onClassCreated }) => 
           setDepartments(deptData);
         }
 
-        // Fetch instructors
-        const instructorResponse = await fetch('http://localhost:8080/api/instructors');
-        if (instructorResponse.ok) {
-          const instructorData = await instructorResponse.json();
-          setInstructors(instructorData);
-        }
+
       } catch (error) {
         console.error('Error fetching data:', error);
         setMessage({ type: 'error', text: 'Failed to load departments and instructors' });

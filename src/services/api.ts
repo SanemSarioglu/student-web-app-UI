@@ -307,9 +307,9 @@ class ApiService {
       
       coursesResponse.data.forEach(course => {
         // Find all sections for this course
-        const courseSections = sectionsResponse.data.filter(section => 
+        const courseSections = sectionsResponse.data?.filter(section => 
           section.course?.courseCode === course.courseCode
-        );
+        ) || [];
         
         if (courseSections.length > 0) {
           // Create a ClassData entry for each section

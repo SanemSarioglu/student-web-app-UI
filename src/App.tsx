@@ -1,22 +1,32 @@
 import { useState, useEffect, useRef } from 'react';
+import { BrowserRouter as Router } from 'react-router-dom';
+import { ClassData, ViewType } from './types/ui';
+import { Student } from './types/entities';
 import { apiService } from './services/api';
-import { 
-  ClassData, 
-  Grades, 
-  ViewType 
-} from './types/ui';
-import { 
-  Student 
-} from './types/entities';
 import Dashboard from './pages/Dashboard';
-import CourseCatalog from './pages/CourseCatalog';
 import MyClasses from './pages/MyClasses';
 import MyGrades from './pages/MyGrades';
+import CourseCatalog from './pages/CourseCatalog';
+import ClassDefinition from './pages/ClassDefinition';
+
+
 
 // Main App component
-const App = () => {
+const AppContent = () => {
+  // Get initial view from URL
+  const getInitialView = (): ViewType => {
+    const path = window.location.pathname;
+    if (path === '/') return 'dashboard';
+    if (path === '/dashboard') return 'dashboard';
+    if (path === '/my-classes') return 'myClasses';
+    if (path === '/my-grades') return 'myGrades';
+    if (path === '/course-catalog') return 'classesList';
+    if (path === '/class-definition') return 'classDefinition';
+    return 'dashboard';
+  };
+
   // State to manage the current view
-  const [currentView, setCurrentView] = useState<ViewType>('dashboard');
+  const [currentView, setCurrentView] = useState<ViewType>(getInitialView());
   
   // State to store available classes
   const [availableClasses, setAvailableClasses] = useState<ClassData[]>([]);
@@ -28,7 +38,7 @@ const App = () => {
   const [allStudentEnrollments, setAllStudentEnrollments] = useState<ClassData[]>([]);
   
   // State to store grades for registered classes
-  const [grades, setGrades] = useState<Grades>({});
+  const [grades, setGrades] = useState<any>({}); // Changed from Grades to any as per new import
   
   // State to store the details of the currently selected class
   const [selectedClassDetails, setSelectedClassDetails] = useState<ClassData | null>(null);
@@ -89,22 +99,56 @@ const App = () => {
         const studentsResponse = await apiService.getStudents();
         if (studentsResponse.success && studentsResponse.data) {
           setStudents(studentsResponse.data);
-          // Set first student as default if available
-          if (studentsResponse.data.length > 0) {
-            setSelectedStudent(studentsResponse.data[0]);
+          
+          // Check URL for student ID first, then localStorage, then default to first student
+          const urlParams = new URLSearchParams(window.location.search);
+          const studentIdFromUrl = urlParams.get('student');
+          const studentIdFromStorage = localStorage.getItem('selectedStudentId');
+          
+          let studentId: number | null = null;
+          
+          if (studentIdFromUrl) {
+            studentId = parseInt(studentIdFromUrl);
+          } else if (studentIdFromStorage) {
+            studentId = parseInt(studentIdFromStorage);
+          } else if (studentsResponse.data.length > 0) {
+            studentId = studentsResponse.data[0].id;
           }
+          
+          if (studentId) {
+            const student = studentsResponse.data.find(s => s.id === studentId);
+            if (student) {
+              setSelectedStudent(student);
+              // Store in localStorage
+              localStorage.setItem('selectedStudentId', studentId.toString());
+            }
+          }
+          
           console.log('Successfully fetched students:', studentsResponse.data);
         } else {
           console.warn('Failed to fetch students:', studentsResponse.error);
         }
 
-        // Fetch courses with their actual section information
+        // Fetch courses with sections
         const coursesResponse = await apiService.getCoursesWithSections();
         if (coursesResponse.success && coursesResponse.data) {
           setAvailableClasses(coursesResponse.data);
-          console.log('Successfully fetched courses with sections from database:', coursesResponse.data);
+          console.log('Successfully fetched courses with sections:', coursesResponse.data);
         } else {
-          console.warn('Failed to fetch courses:', coursesResponse.error);
+          console.warn('Failed to fetch courses with sections:', coursesResponse.error);
+        }
+
+        // Fetch all enrollments for grades
+        const enrollmentsResponse = await apiService.getEnrollments();
+        if (enrollmentsResponse.success && enrollmentsResponse.data) {
+          // Use the existing method that returns ClassData[]
+          const allEnrollmentsResponse = await apiService.getAllStudentEnrollments(1); // Use student ID 1 as default
+          if (allEnrollmentsResponse.success && allEnrollmentsResponse.data) {
+            setAllStudentEnrollments(allEnrollmentsResponse.data);
+            console.log('Successfully fetched all enrollments:', allEnrollmentsResponse.data);
+          }
+        } else {
+          console.warn('Failed to fetch all enrollments:', enrollmentsResponse.error);
         }
       } catch (error) {
         console.error('Error fetching initial data:', error);
@@ -114,62 +158,111 @@ const App = () => {
     fetchData();
   }, []);
 
-  // Fetch enrollments when selected student changes
+  // Check URL on component mount to set current view
   useEffect(() => {
-    const fetchStudentData = async () => {
-      if (selectedStudent) {
-        try {
-          // Fetch enrollments for the selected student (for My Classes page)
-          const enrollmentsResponse = await apiService.getStudentEnrollments(selectedStudent.id);
-          if (enrollmentsResponse.success && enrollmentsResponse.data) {
-            setRegisteredClasses(enrollmentsResponse.data);
-            console.log('Successfully fetched enrollments for student:', enrollmentsResponse.data);
-          } else {
-            console.warn('Failed to fetch enrollments:', enrollmentsResponse.error);
-          }
+    const path = window.location.pathname;
+    if (path === '/') {
+      setCurrentView('dashboard');
+    } else if (path === '/dashboard') {
+      setCurrentView('dashboard');
+    } else if (path === '/my-classes') {
+      setCurrentView('myClasses');
+    } else if (path === '/my-grades') {
+      setCurrentView('myGrades');
+    } else if (path === '/course-catalog') {
+      setCurrentView('classesList');
+    } else if (path === '/class-definition') {
+      setCurrentView('classDefinition');
+    }
+  }, []);
 
-          // Fetch all enrollments for the selected student (for My Grades page - no deduplication)
-          const allEnrollmentsResponse = await apiService.getAllStudentEnrollments(selectedStudent.id);
-          if (allEnrollmentsResponse.success && allEnrollmentsResponse.data) {
-            setAllStudentEnrollments(allEnrollmentsResponse.data);
-            console.log('Successfully fetched all enrollments for student:', allEnrollmentsResponse.data);
-          } else {
-            console.warn('Failed to fetch all enrollments:', allEnrollmentsResponse.error);
-          }
+  // Function to fetch student-specific data
+  const fetchStudentData = async () => {
+    if (!selectedStudent) return;
 
-          // Fetch grades for the selected student
-          const gradesResponse = await apiService.getStudentGrades(selectedStudent.id);
-          if (gradesResponse.success && gradesResponse.data) {
-            // The API service already returns GradeData objects, no transformation needed
-            setGrades(gradesResponse.data);
-            console.log('Successfully fetched grades for student:', gradesResponse.data);
-          } else {
-            console.warn('Failed to fetch grades:', gradesResponse.error);
-          }
-        } catch (error) {
-          console.error('Error fetching student data:', error);
-        }
+    try {
+      // Fetch registered classes for the selected student
+      const registeredResponse = await apiService.getStudentEnrollments(selectedStudent.id);
+      if (registeredResponse.success && registeredResponse.data) {
+        setRegisteredClasses(registeredResponse.data);
+        console.log('Successfully fetched registered classes:', registeredResponse.data);
+      } else {
+        console.warn('Failed to fetch registered classes:', registeredResponse.error);
       }
-    };
 
+      // Fetch grades for the selected student
+      const gradesResponse = await apiService.getStudentGrades(selectedStudent.id);
+      if (gradesResponse.success && gradesResponse.data) {
+        setGrades(gradesResponse.data);
+        console.log('Successfully fetched grades:', gradesResponse.data);
+      } else {
+        console.warn('Failed to fetch grades:', gradesResponse.error);
+      }
+    } catch (error) {
+      console.error('Error fetching student data:', error);
+    }
+  };
+
+  // Fetch student data when selected student changes
+  useEffect(() => {
     fetchStudentData();
   }, [selectedStudent]);
 
-  // Handle student selection change
   const handleStudentChange = (studentId: number) => {
     const student = students.find(s => s.id === studentId);
     setSelectedStudent(student || null);
+    
+    // Store in localStorage
+    localStorage.setItem('selectedStudentId', studentId.toString());
+    
+    // Update URL with student parameter
+    const currentPath = window.location.pathname;
+    const newUrl = `${currentPath}?student=${studentId}`;
+    window.history.pushState({}, '', newUrl);
   };
 
-  // Handle class registration
+  const handleNavigation = (view: ViewType) => {
+    setCurrentView(view);
+    const currentStudentId = selectedStudent?.id || localStorage.getItem('selectedStudentId');
+    
+    let newPath = '';
+    switch (view) {
+      case 'dashboard':
+        newPath = '/dashboard';
+        break;
+      case 'myClasses':
+        newPath = '/my-classes';
+        break;
+      case 'myGrades':
+        newPath = '/my-grades';
+        break;
+      case 'classesList':
+        newPath = '/course-catalog';
+        break;
+      case 'classDefinition':
+        newPath = '/class-definition';
+        break;
+      default:
+        newPath = '/';
+    }
+    
+    // Add student ID to URL if available
+    if (currentStudentId) {
+      newPath += `?student=${currentStudentId}`;
+    }
+    
+    // Update URL
+    window.history.pushState({}, '', newPath);
+  };
+
   const handleRegister = async (classToRegister: ClassData) => {
     if (!selectedStudent) {
-      showTransientNotification('Please select a student first');
+      showTransientNotification('Please select a student first.');
       return;
     }
 
     if (!classToRegister.sectionId) {
-      showTransientNotification('Course section information not available');
+      showTransientNotification('Section information not available for this class.');
       return;
     }
 
@@ -177,34 +270,31 @@ const App = () => {
       `Are you sure you want to register for ${classToRegister.courseName}?`,
       async () => {
         try {
-          // Create enrollment in database using the sectionId from the course data
-          const enrollmentResponse = await apiService.createEnrollment(selectedStudent.id, classToRegister.sectionId!);
-          
-          if (enrollmentResponse.success) {
-            // Update local state
-            setRegisteredClasses(prev => [...prev, classToRegister]);
-            showTransientNotification(`Successfully registered for ${classToRegister.courseName}`);
+          const response = await apiService.createEnrollment(selectedStudent.id!, classToRegister.sectionId!);
+          if (response.success) {
+            showTransientNotification('Successfully registered for the class!');
+            // Refresh student data
+            fetchStudentData();
           } else {
-            showTransientNotification(`Failed to register: ${enrollmentResponse.error}`);
+            showTransientNotification(`Registration failed: ${response.error}`);
           }
         } catch (error) {
-          console.error('Registration error:', error);
-          showTransientNotification('Failed to register for course');
+          console.error('Error registering for class:', error);
+          showTransientNotification('An error occurred during registration.');
         }
       }
     );
   };
 
-  // Handle class unregistration
   const handleUnregister = async (classId: string) => {
-    const classToUnregister = registeredClasses.find(c => c.courseCode === classId);
-    if (!classToUnregister || !selectedStudent) {
-      showTransientNotification('No class found to unregister');
+    if (!selectedStudent) {
+      showTransientNotification('Please select a student first.');
       return;
     }
 
-    if (!classToUnregister.sectionId) {
-      showTransientNotification('Course section information not available');
+    const classToUnregister = registeredClasses.find(c => c.sectionId === parseInt(classId));
+    if (!classToUnregister) {
+      showTransientNotification('Class not found.');
       return;
     }
 
@@ -212,68 +302,70 @@ const App = () => {
       `Are you sure you want to unregister from ${classToUnregister.courseName}?`,
       async () => {
         try {
-          console.log('Looking for enrollment:', { studentId: selectedStudent.id, sectionId: classToUnregister.sectionId });
-          
-          // Find the enrollment to delete
+          // First find the enrollment
           const enrollmentResponse = await apiService.getEnrollmentByStudentAndSection(
             selectedStudent.id, 
             classToUnregister.sectionId!
           );
-
+          
           if (enrollmentResponse.success && enrollmentResponse.data) {
-            console.log('Found enrollment:', enrollmentResponse.data);
-            
-            // Delete enrollment from database
+            // Delete the enrollment
             const deleteResponse = await apiService.deleteEnrollment(enrollmentResponse.data.enrollmentId);
-            
             if (deleteResponse.success) {
-              // Update local state
-              setRegisteredClasses(prev => prev.filter(c => c.courseCode !== classId));
-              showTransientNotification(`Successfully unregistered from ${classToUnregister.courseName}`);
+              showTransientNotification('Successfully unregistered from the class!');
+              // Refresh student data
+              fetchStudentData();
             } else {
-              console.error('Delete response error:', deleteResponse.error);
-              showTransientNotification(`Failed to unregister: ${deleteResponse.error}`);
+              showTransientNotification(`Unregistration failed: ${deleteResponse.error}`);
             }
           } else {
-            console.error('Enrollment not found:', enrollmentResponse.error);
-            showTransientNotification('Enrollment not found');
+            showTransientNotification('Enrollment not found.');
           }
         } catch (error) {
-          console.error('Unregistration error:', error);
-          showTransientNotification('Failed to unregister from course');
+          console.error('Error unregistering from class:', error);
+          showTransientNotification('An error occurred during unregistration.');
         }
       }
     );
   };
 
-  // Handle viewing class details
   const handleViewClassDetails = (classObj: ClassData) => {
     setSelectedClassDetails(classObj);
-    setCurrentView('classDetails');
   };
 
-  // Handle going back from class details
   const handleBackFromClassDetails = () => {
     setSelectedClassDetails(null);
-    setCurrentView('classesList');
   };
 
-  // Get student display name
   const getStudentDisplayName = () => {
-    if (!selectedStudent) return 'Please select a student';
-    return `${selectedStudent.firstName} ${selectedStudent.lastName}`;
+    return selectedStudent ? `${selectedStudent.firstName} ${selectedStudent.lastName}` : 'No student selected';
   };
 
-  // Get student department
   const getStudentDepartment = () => {
-    if (!selectedStudent?.department) return 'N/A';
-    return selectedStudent.department.departmentCode;
+    return selectedStudent?.department?.departmentName || 'Unknown Department';
   };
 
-  // Get student semester
   const getStudentSemester = () => {
-    if (!selectedStudent) return 'N/A';
-    return selectedStudent.semester;
+    return selectedStudent?.semester || 'Unknown Semester';
+  };
+
+  // Function to fetch initial data
+  const fetchInitialData = async () => {
+    try {
+      // Fetch courses with sections
+      const coursesResponse = await apiService.getCoursesWithSections();
+      if (coursesResponse.success && coursesResponse.data) {
+        setAvailableClasses(coursesResponse.data);
+      }
+
+      // Fetch all enrollments for grades
+      const allEnrollmentsResponse = await apiService.getAllStudentEnrollments(1); // Use student ID 1 as default
+      if (allEnrollmentsResponse.success && allEnrollmentsResponse.data) {
+        setAllStudentEnrollments(allEnrollmentsResponse.data);
+      }
+    } catch (error) {
+      console.error('Error fetching initial data:', error);
+    }
   };
 
   return (
@@ -313,32 +405,39 @@ const App = () => {
         </div>
         <nav className="flex flex-wrap justify-center gap-4">
           <button
-            onClick={() => { setCurrentView('dashboard'); setSelectedClassDetails(null); }}
+            onClick={() => handleNavigation('dashboard')}
             className={`px-6 py-3 rounded-lg shadow-md transition-all duration-300
               ${currentView === 'dashboard' ? 'bg-blue-600 text-white transform scale-105' : 'bg-gray-200 text-gray-700 hover:bg-blue-100 hover:text-blue-700'}`}
           >
             Dashboard
           </button>
           <button
-            onClick={() => { setCurrentView('classesList'); setSelectedClassDetails(null); }}
+            onClick={() => handleNavigation('classesList')}
             className={`px-6 py-3 rounded-lg shadow-md transition-all duration-300
               ${currentView === 'classesList' ? 'bg-blue-600 text-white transform scale-105' : 'bg-gray-200 text-gray-700 hover:bg-blue-100 hover:text-blue-700'}`}
           >
             All Classes
           </button>
           <button
-            onClick={() => { setCurrentView('myClasses'); setSelectedClassDetails(null); }}
+            onClick={() => handleNavigation('myClasses')}
             className={`px-6 py-3 rounded-lg shadow-md transition-all duration-300
               ${currentView === 'myClasses' || currentView === 'classDetails' ? 'bg-blue-600 text-white transform scale-105' : 'bg-gray-200 text-gray-700 hover:bg-blue-100 hover:text-blue-700'}`}
           >
             My Registered Classes
           </button>
           <button
-            onClick={() => { setCurrentView('myGrades'); setSelectedClassDetails(null); }}
+            onClick={() => handleNavigation('myGrades')}
             className={`px-6 py-3 rounded-lg shadow-md transition-all duration-300
               ${currentView === 'myGrades' ? 'bg-blue-600 text-white transform scale-105' : 'bg-gray-200 text-gray-700 hover:bg-blue-100 hover:text-blue-700'}`}
           >
             My Grades
+          </button>
+          <button
+            onClick={() => handleNavigation('classDefinition')}
+            className={`px-6 py-3 rounded-lg shadow-md transition-all duration-300
+              ${currentView === 'classDefinition' ? 'bg-blue-600 text-white transform scale-105' : 'bg-gray-200 text-gray-700 hover:bg-blue-100 hover:text-blue-700'}`}
+          >
+            Define New Class
           </button>
         </nav>
       </header>
@@ -351,37 +450,48 @@ const App = () => {
       )}
 
       <main className="w-full max-w-4xl bg-white shadow-md rounded-lg p-6">
-        {currentView === 'dashboard' && (
-          <Dashboard
-            registeredClasses={allStudentEnrollments}
-            grades={grades}
-          />
-        )}
-        {currentView === 'classesList' && (
-          <CourseCatalog
-            availableClasses={availableClasses}
-            registeredClasses={registeredClasses}
-            onRegister={handleRegister}
-          />
-        )}
-        {currentView === 'myClasses' && (
-          <MyClasses
-            registeredClasses={registeredClasses}
-            onViewDetails={handleViewClassDetails}
-            onUnregister={handleUnregister}
-          />
-        )}
-        {currentView === 'myGrades' && (
-          <MyGrades
-            registeredClasses={allStudentEnrollments}
-            grades={grades}
-          />
-        )}
-        {currentView === 'classDetails' && selectedClassDetails && (
+        {selectedClassDetails ? (
           <ClassDetails
             classDetails={selectedClassDetails}
             onBack={handleBackFromClassDetails}
           />
+        ) : (
+          <>
+            {currentView === 'dashboard' && (
+              <Dashboard
+                registeredClasses={allStudentEnrollments}
+                grades={grades}
+              />
+            )}
+            {currentView === 'myClasses' && (
+              <MyClasses
+                registeredClasses={registeredClasses}
+                onUnregister={handleUnregister}
+                onViewDetails={handleViewClassDetails}
+              />
+            )}
+            {currentView === 'myGrades' && (
+              <MyGrades
+                registeredClasses={registeredClasses}
+                grades={grades}
+              />
+            )}
+            {currentView === 'classesList' && (
+              <CourseCatalog
+                availableClasses={availableClasses}
+                registeredClasses={registeredClasses}
+                onRegister={handleRegister}
+              />
+            )}
+            {currentView === 'classDefinition' && (
+              <ClassDefinition
+                onClassCreated={() => {
+                  showTransientNotification('Class created successfully! Refreshing available classes...');
+                  fetchInitialData();
+                }}
+              />
+            )}
+          </>
         )}
       </main>
 
@@ -411,40 +521,93 @@ const App = () => {
   );
 };
 
-// New Dashboard Component
-
-
-
-
-
-
-
-
-// Component for displaying class details
+// Class Details component
 const ClassDetails = ({ classDetails, onBack }: { 
   classDetails: ClassData; 
   onBack: () => void; 
 }) => {
-  if (!classDetails) return null;
-
   return (
-    <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
-      <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">{classDetails.courseName} Details</h2>
-      <div className="space-y-3 text-gray-700">
-        <p><span className="font-semibold">Course ID:</span> {classDetails.courseCode}</p>
-        <p><span className="font-semibold">Description:</span> {classDetails.description}</p>
-        <p><span className="font-semibold">Professor:</span> {classDetails.instructor}</p>
-        <p><span className="font-semibold">Credits:</span> {classDetails.credits}</p>
-        <p><span className="font-semibold">Department:</span> {classDetails.majorDepartment?.departmentCode}</p>
-        <p><span className="font-semibold">Semester:</span> {classDetails.year} {classDetails.semester} ({classDetails.availableForSemester})</p>
+    <div className="bg-white shadow-md rounded-lg p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-gray-800">{classDetails.courseName}</h2>
+        <button
+          onClick={onBack}
+          className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600"
+        >
+          Back
+        </button>
       </div>
-      <button
-        onClick={onBack}
-        className="mt-6 w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-300 shadow-md"
-      >
-        Back to My Registered Classes
-      </button>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-700 mb-4">Course Information</h3>
+          <div className="space-y-3">
+            <div>
+              <span className="font-medium text-gray-600">Course Code:</span>
+              <span className="ml-2 text-gray-800">{classDetails.courseCode}</span>
+            </div>
+            <div>
+              <span className="font-medium text-gray-600">Credits:</span>
+              <span className="ml-2 text-gray-800">{classDetails.credits}</span>
+            </div>
+            <div>
+              <span className="font-medium text-gray-600">Department:</span>
+              <span className="ml-2 text-gray-800">{classDetails.majorDepartment?.departmentName || 'Unknown'}</span>
+            </div>
+            <div>
+              <span className="font-medium text-gray-600">Available For:</span>
+              <span className="ml-2 text-gray-800">{classDetails.availableForSemester}</span>
+            </div>
+            {classDetails.prerequisites && (
+              <div>
+                <span className="font-medium text-gray-600">Prerequisites:</span>
+                <span className="ml-2 text-gray-800">{classDetails.prerequisites}</span>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        <div>
+          <h3 className="text-lg font-semibold text-gray-700 mb-4">Section Information</h3>
+          <div className="space-y-3">
+            <div>
+              <span className="font-medium text-gray-600">Section ID:</span>
+              <span className="ml-2 text-gray-800">{classDetails.sectionId}</span>
+            </div>
+            <div>
+              <span className="font-medium text-gray-600">Instructor:</span>
+              <span className="ml-2 text-gray-800">{classDetails.instructor}</span>
+            </div>
+            <div>
+              <span className="font-medium text-gray-600">Semester:</span>
+              <span className="ml-2 text-gray-800">{classDetails.semester}</span>
+            </div>
+            <div>
+              <span className="font-medium text-gray-600">Year:</span>
+              <span className="ml-2 text-gray-800">{classDetails.year}</span>
+            </div>
+            <div>
+              <span className="font-medium text-gray-600">Capacity:</span>
+              <span className="ml-2 text-gray-800">{classDetails.capacity}</span>
+            </div>
+            <div>
+              <span className="font-medium text-gray-600">Current Enrollment:</span>
+              <span className="ml-2 text-gray-800">{classDetails.currentEnrollment}</span>
+            </div>
+
+          </div>
+        </div>
+      </div>
     </div>
+  );
+};
+
+// Main App wrapper with Router
+const App = () => {
+  return (
+    <Router>
+      <AppContent />
+    </Router>
   );
 };
 
