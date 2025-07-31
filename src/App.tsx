@@ -186,6 +186,15 @@ const AppContent = () => {
         console.warn('Failed to fetch registered classes:', registeredResponse.error);
       }
 
+      // Fetch all enrollments for the selected student (for grades page)
+      const allEnrollmentsResponse = await apiService.getAllStudentEnrollments(selectedStudent.id);
+      if (allEnrollmentsResponse.success && allEnrollmentsResponse.data) {
+        setAllStudentEnrollments(allEnrollmentsResponse.data);
+        console.log('Successfully fetched all enrollments for grades:', allEnrollmentsResponse.data);
+      } else {
+        console.warn('Failed to fetch all enrollments:', allEnrollmentsResponse.error);
+      }
+
       // Fetch grades for the selected student
       const gradesResponse = await apiService.getStudentGrades(selectedStudent.id);
       if (gradesResponse.success && gradesResponse.data) {
@@ -458,7 +467,7 @@ const AppContent = () => {
             )}
             {currentView === 'myGrades' && (
               <MyGrades
-                registeredClasses={registeredClasses}
+                registeredClasses={allStudentEnrollments}
                 grades={grades}
               />
             )}

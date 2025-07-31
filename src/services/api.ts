@@ -48,25 +48,25 @@ const transformEnrollmentToClassData = (enrollment: Enrollment): ClassData => {
   const section = enrollment.section;
 
   return {
-    courseCode: course.courseCode,
-    courseName: course.courseName,
-    instructor: course.instructor,
-    credits: course.credits,
-    majorDepartment: course.majorDepartment || {
-      departmentCode: course.majorCode || '',
+    courseCode: course.courseCode ?? '',
+    courseName: course.courseName ?? '',
+    instructor: section.instructor ? `${section.instructor.firstName} ${section.instructor.lastName}` : '',
+    credits: course.credits ?? 0,
+    majorDepartment: course.majorDepartment ?? {
+      departmentCode: course.majorCode ?? '',
       departmentName: '',
       headOfDepartment: ''
     },
-    availableForSemester: course.availableForSemester,
-    year: section.year,
-    semester: section.semester,
-    prerequisites: course.prerequisites,
-    active: course.isActive,
+    availableForSemester: course.availableForSemester ?? '',
+    year: section.year ?? 2025,
+    semester: section.semester ?? 'Fall',
+    prerequisites: course.prerequisites ?? '',
+    active: course.isActive ?? true,
     grade: enrollment.grade,
     enrollmentStatus: enrollment.status,
     sectionId: section.sectionId, // Include sectionId for enrollment operations
-    currentEnrollment: section.currentEnrollment,
-    capacity: section.capacity
+    currentEnrollment: section.currentEnrollment ?? 0,
+    capacity: section.capacity ?? 0
   };
 };
 
@@ -206,16 +206,40 @@ class ApiService {
 
   // Get all enrollments for a specific student (for grades page - no deduplication)
   async getAllStudentEnrollments(studentId: number): Promise<ApiResponse<ClassData[]>> {
+    console.log('getAllStudentEnrollments called with studentId:', studentId);
     const response = await this.makeRequest<Enrollment[]>('/enrollment');
     
     if (response.success && response.data) {
+      console.log('getAllStudentEnrollments - total enrollments from API:', response.data.length);
+      
       // Filter enrollments for the specific student
       const studentEnrollments = response.data.filter(
         enrollment => enrollment.student?.id === studentId
       );
       
-      // Transform to ClassData format (no deduplication)
-      const transformedEnrollments = studentEnrollments.map(transformEnrollmentToClassData);
+      console.log('getAllStudentEnrollments - filtered enrollments for student', studentId, ':', studentEnrollments.length);
+      
+      // Transform to ClassData format with error handling
+      const transformedEnrollments: ClassData[] = [];
+      
+      for (const enrollment of studentEnrollments) {
+        try {
+          const transformed = transformEnrollmentToClassData(enrollment);
+          console.log('Successfully transformed enrollment:', {
+            courseCode: transformed.courseCode,
+            courseName: transformed.courseName,
+            year: transformed.year,
+            semester: transformed.semester,
+            grade: transformed.grade
+          });
+          transformedEnrollments.push(transformed);
+        } catch (error) {
+          console.error('Error transforming enrollment:', enrollment, 'Error:', error);
+          // Continue with other enrollments instead of failing completely
+        }
+      }
+      
+      console.log('getAllStudentEnrollments - successfully transformed enrollments:', transformedEnrollments.length);
       
       return {
         data: transformedEnrollments,
@@ -257,20 +281,23 @@ class ApiService {
         if (enrollment.section?.course && enrollment.grade) {
           const courseCode = enrollment.section.course.courseCode;
           const gradeValue = parseFloat(enrollment.grade);
+          const year = enrollment.section.year;
+          const semester = enrollment.section.semester;
           
-          // Only add if we haven't seen this course code yet (most recent will be first)
-          if (!studentGrades[courseCode]) {
-            // Convert simple grade to detailed format expected by frontend
-            // Ensure all values are numbers, not objects
-            const gradeData = {
-              midterm: Number(gradeValue),
-              project: Number(gradeValue),
-              final: Number(gradeValue),
-              quizzes: Number(gradeValue)
-            };
-            
-            studentGrades[courseCode] = gradeData;
-          }
+          // Create a unique key that includes semester information
+          const gradeKey = `${courseCode}-${year}-${semester}`;
+          
+          console.log('Creating grade key:', gradeKey, 'for student', studentId, 'with grade:', gradeValue);
+          
+          // Convert simple grade to detailed format expected by frontend
+          const gradeData = {
+            midterm: Number(gradeValue),
+            project: Number(gradeValue),
+            final: Number(gradeValue),
+            quizzes: Number(gradeValue)
+          };
+          
+          studentGrades[gradeKey] = gradeData;
         }
       });
       

@@ -10,13 +10,15 @@ interface MyGradesProps {
 const MyGrades: React.FC<MyGradesProps> = ({ registeredClasses, grades }) => {
   // Filter classes with numerical grades to be included in the view
   const classesWithGrades = registeredClasses.filter(cls => {
-    const overallGrade = calculateOverallCourseGrade(grades[cls.courseCode]);
+    const gradeKey = `${cls.courseCode}-${cls.year}-${cls.semester}`;
+    const overallGrade = calculateOverallCourseGrade(grades[gradeKey]);
     return typeof overallGrade === 'number';
   });
 
   // Calculate overall average grade across all classes (that have grades)
   const totalOverallPoints = classesWithGrades.reduce((sum, cls) => {
-    const overallGrade = calculateOverallCourseGrade(grades[cls.courseCode]);
+    const gradeKey = `${cls.courseCode}-${cls.year}-${cls.semester}`;
+    const overallGrade = calculateOverallCourseGrade(grades[gradeKey]);
     return sum + (overallGrade as number);
   }, 0);
 
@@ -25,7 +27,8 @@ const MyGrades: React.FC<MyGradesProps> = ({ registeredClasses, grades }) => {
   // Group grades by a combined year-semester key
   const groupedGradesBySemester: { [key: string]: { year: number; semester: string; classes: (ClassData & { overallGrade: number })[] } } = {};
   classesWithGrades.forEach(cls => {
-    const overallGrade = calculateOverallCourseGrade(grades[cls.courseCode]);
+    const gradeKey = `${cls.courseCode}-${cls.year}-${cls.semester}`;
+    const overallGrade = calculateOverallCourseGrade(grades[gradeKey]);
     if (typeof overallGrade === 'number') {
       const semesterKey = `${cls.year}-${cls.semester}`; 
 
